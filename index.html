@@ -475,18 +475,20 @@
 
         // Construct the message
         const msg = 
-`*Voter Information Slip - 2026* 🇮🇳
-Il An Noor Foundation
+`*Voter Information Slip - 2026*
+Issued by Il An Noor Foundation
 
 *Name:* ${currentVoterData.name}
+*EPIC / Voter ID No.:* ${currentVoterData.epic}
+*Gender / Age:* ${currentVoterData.gender} / ${currentVoterData.age}
 *Part No:* ${currentVoterData.part}
 *Serial No:* ${currentVoterData.sr}
 
-*Polling Booth:* ${currentVoterData.boothName}
-${currentVoterData.boothAddr}
+*Polling Booth:* ${currentVoterData.boothAddr}
 
-*Vote on 15th Jan!*
-Please carry your Photo ID.`;
+*Election Date:* 15th Jan, 2026
+
+Please carry a valid official Photo ID to vote.`;
 
         const encodedMsg = encodeURIComponent(msg);
         const url = `whatsapp://send?phone=${number}&text=${encodedMsg}`;
