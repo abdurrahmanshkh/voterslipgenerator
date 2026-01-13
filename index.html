@@ -399,8 +399,18 @@
                         </div>
 
                         <div class="data-group">
-                            <span class="data-label">Part No.</span>
-                            <span id="disp-part" class="data-value highlight">---</span>
+                            <span class="data-label">Assembly Election Details</span>
+                            <span id="disp-ac-details" class="data-value highlight">---</span>
+                        </div>
+
+                        <div class="data-group">
+                            <span class="data-label">Ward No.</span>
+                            <span id="disp-ward-no" class="data-value highlight">---</span>
+                        </div>
+
+                        <div class="data-group">
+                            <span class="data-label">Booth No.</span>
+                            <span id="disp-booth-no" class="data-value highlight">---</span>
                         </div>
 
                         <div class="data-group">
@@ -409,13 +419,8 @@
                         </div>
 
                         <div class="data-group full-row">
-                            <span class="data-label">Polling Booth Name</span>
-                            <span id="disp-booth-name" class="data-value">---</span>
-                        </div>
-
-                        <div class="data-group full-row">
                             <span class="data-label">Polling Booth Address</span>
-                            <span id="disp-booth-addr" class="data-value" style="font-size: 0.9rem;">---</span>
+                            <span id="disp-booth-addr" class="data-value">---</span>
                         </div>
                     </div>
 
@@ -486,9 +491,10 @@
             gender: parts[3],
             age: parts[4],
             epic: parts[5],
-            part: parts[7],
-            sr: parts[8],
-            boothName: parts[12],
+            acDetails: parts[6] + " / " + parts[7] + " / " + parts[8],
+            boothNo: parts[10],
+            wardNo: parts[9],
+            sr: parts[11],
             boothAddr: parts[13]
         };
 
@@ -498,9 +504,10 @@
         document.getElementById('disp-name').innerText = data.name;
         document.getElementById('disp-epic').innerText = data.epic;
         document.getElementById('disp-gender-age').innerText = `${data.gender} / ${data.age}`;
-        document.getElementById('disp-part').innerText = data.part;
+        document.getElementById('disp-ward-no').innerText = data.wardNo;
+        document.getElementById('disp-booth-no').innerText = data.boothNo;
+        document.getElementById('disp-ac-details').innerText = data.acDetails;
         document.getElementById('disp-sr').innerText = data.sr;
-        document.getElementById('disp-booth-name').innerText = data.boothName;
         document.getElementById('disp-booth-addr').innerText = data.boothAddr;
 
         // 4. Show Result Section
@@ -527,9 +534,11 @@
 Issued by Il An Noor Foundation
 
 *Name:* ${currentVoterData.name}
-*EPIC / Voter ID No.:* ${currentVoterData.epic}
+*EPIC / Voter ID No:* ${currentVoterData.epic}
 *Gender / Age:* ${currentVoterData.gender} / ${currentVoterData.age}
-*Part No:* ${currentVoterData.part}
+*Assembly Election Details:* ${currentVoterData.acDetails}
+*Ward No:* ${currentVoterData.wardNo}
+*Booth No:* ${currentVoterData.boothNo}
 *Serial No:* ${currentVoterData.sr}
 
 *Polling Booth:* ${currentVoterData.boothAddr}
