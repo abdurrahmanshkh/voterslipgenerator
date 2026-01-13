@@ -580,7 +580,7 @@ https://www.ilannoor.org/`;
         
         // Use html2canvas
         // scale: 2 improves resolution for mobile devices
-        html2canvas(slip, { scale: 2, useCORS: true, backgroundColor: "#ffffff" }).then(canvas => {
+        html2canvas(slip, { scale: 5, useCORS: true, backgroundColor: "#ffffff" }).then(canvas => {
             const link = document.createElement('a');
             const fileName = currentVoterData.name ? 
                 `VoterSlip_${currentVoterData.name.replace(/\s+/g, '_')}.png` : 
