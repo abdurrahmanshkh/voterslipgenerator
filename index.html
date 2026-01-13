@@ -201,10 +201,16 @@
             overflow: hidden;
         }
 
-        .slip-header-img {
+        #slip-header {
             width: 100%;
-            display: block;
+            justify-items: center;
             border-bottom: 3px solid var(--accent-gold);
+            background-color: #301401;
+        }
+
+        .slip-header-img {
+            display: block;
+            max-height: 120px;
         }
 
         .slip-body {
@@ -376,8 +382,9 @@
         
         <div class="slip-wrapper">
             <div id="voter-slip">
-                <img src="https://www.ilannoor.org/header.png" alt="Foundation Header" class="slip-header-img">
-                
+                <div id="slip-header">
+                    <img src="https://www.ilannoor.org/header.png" alt="Foundation Header" class="slip-header-img">
+                </div>
                 <div class="slip-body">
                     <div class="slip-heading">Voter Information Slip</div>
                     <div class="slip-subheading">Maharashtra Municipal Corporation Elections - 15th Jan 2026</div>
