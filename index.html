@@ -150,6 +150,12 @@
             border-color: var(--accent-gold);
         }
 
+        .action-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
         .btn-primary {
             background-color: var(--primary-brown);
             color: white;
@@ -159,13 +165,28 @@
             cursor: pointer;
             font-weight: 600;
             font-size: 1rem;
-            margin-top: 10px;
-            width: 100%;
             transition: background 0.3s;
+            flex: 1;
         }
 
         .btn-primary:hover {
             background-color: var(--secondary-brown);
+        }
+
+        .btn-clear {
+            background: transparent;
+            color: var(--primary-brown);
+            border: 2px solid var(--primary-brown);
+            border-radius: 6px;
+            padding: 12px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.18s, color 0.18s;
+        }
+
+        .btn-clear:hover {
+            background: var(--primary-brown);
+            color: white;
         }
 
         /* --- Slip Preview Area --- */
@@ -207,6 +228,8 @@
             border-bottom: 3px solid var(--accent-gold);
             background-color: #301401;
             padding-block: 10px;
+            display:flex;
+            justify-content:center;
         }
 
         .slip-header-img {
@@ -374,7 +397,12 @@
         <h3 class="section-title">1. Paste Voter Data</h3>
         <p style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">Paste the full row from the voter list (including tabs/spaces):</p>
         <textarea id="rawData" placeholder="Local Body Name	Voter Name	Gender	Age..."></textarea>
-        <button class="btn-primary" onclick="processData()">Generate Slip</button>
+
+        <!-- Action row: Generate + Clear -->
+        <div class="action-row">
+            <button class="btn-primary" onclick="processData()">Generate Slip</button>
+            <button class="btn-clear" onclick="clearAll()" aria-label="Clear all data and reset page">Clear All</button>
+        </div>
     </div>
 
     <div id="result-section">
@@ -493,30 +521,30 @@
         }
 
         // 2. Extract Data (Indices based on your description)
-        // [2] Name, [3] Gender, [4] Age, [5] EPIC, [7] Part, [8] SR, [12] Booth Name, [13] Booth Addr
+        // Note: adjust indices if your source columns differ
         const data = {
-            name: parts[2],
-            gender: parts[3],
-            age: parts[4],
-            epic: parts[5],
-            acDetails: parts[6] + " / " + parts[7] + " / " + parts[8],
-            boothNo: parts[10],
-            wardNo: parts[9],
-            sr: parts[11],
-            boothAddr: parts[13]
+            name: parts[2] || '',
+            gender: parts[3] || '',
+            age: parts[4] || '',
+            epic: parts[5] || '',
+            acDetails: ((parts[6] || '') + " / " + (parts[7] || '') + " / " + (parts[8] || '')).replace(/^\s*\/\s*/, ''),
+            boothNo: parts[10] || '',
+            wardNo: parts[9] || '',
+            sr: parts[11] || '',
+            boothAddr: parts[13] || ''
         };
 
         currentVoterData = data; // Store for WhatsApp function
 
         // 3. Update DOM
-        document.getElementById('disp-name').innerText = data.name;
-        document.getElementById('disp-epic').innerText = data.epic;
-        document.getElementById('disp-gender-age').innerText = `${data.gender} / ${data.age}`;
-        document.getElementById('disp-ward-no').innerText = data.wardNo;
-        document.getElementById('disp-booth-no').innerText = data.boothNo;
-        document.getElementById('disp-ac-details').innerText = data.acDetails;
-        document.getElementById('disp-sr').innerText = data.sr;
-        document.getElementById('disp-booth-addr').innerText = data.boothAddr;
+        document.getElementById('disp-name').innerText = data.name || '---';
+        document.getElementById('disp-epic').innerText = data.epic || '---';
+        document.getElementById('disp-gender-age').innerText = `${data.gender || '---'} / ${data.age || '---'}`;
+        document.getElementById('disp-ward-no').innerText = data.wardNo || '---';
+        document.getElementById('disp-booth-no').innerText = data.boothNo || '---';
+        document.getElementById('disp-ac-details').innerText = data.acDetails || '---';
+        document.getElementById('disp-sr').innerText = data.sr || '---';
+        document.getElementById('disp-booth-addr').innerText = data.boothAddr || '---';
 
         // 4. Show Result Section
         const resultSec = document.getElementById('result-section');
@@ -579,7 +607,7 @@ https://www.ilannoor.org/`;
         const slip = document.getElementById('voter-slip');
         
         // Use html2canvas
-        // scale: 2 improves resolution for mobile devices
+        // scale: 5 improves resolution for higher-DPI exports — adjust as needed
         html2canvas(slip, { scale: 5, useCORS: true, backgroundColor: "#ffffff" }).then(canvas => {
             const link = document.createElement('a');
             const fileName = currentVoterData.name ? 
@@ -590,6 +618,42 @@ https://www.ilannoor.org/`;
             link.href = canvas.toDataURL("image/png");
             link.click();
         });
+    }
+
+    // --------- Clear all functionality ----------
+    function clearAll() {
+        // Reset stored data
+        currentVoterData = {};
+
+        // Clear inputs
+        const raw = document.getElementById('rawData');
+        const wa = document.getElementById('wa-number');
+        if (raw) raw.value = '';
+        if (wa) wa.value = '';
+
+        // Reset displayed slip values to placeholders
+        const placeholders = ['disp-name','disp-epic','disp-gender-age','disp-ac-details','disp-ward-no','disp-booth-no','disp-sr','disp-booth-addr'];
+        placeholders.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = '---';
+        });
+
+        // Hide result section
+        const resultSec = document.getElementById('result-section');
+        if (resultSec) resultSec.style.display = 'none';
+
+        // Restore document title (if it was changed)
+        document.title = 'Voter Slip Generator - Il An Noor Foundation';
+
+        // Optionally reset or restore canonical/meta tags if you changed them dynamically
+        // (if you implement dynamic meta updates elsewhere, call a reset function here)
+
+        // Scroll to top / input area ready for new paste
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        // focus the textarea for convenience
+        const textarea = document.getElementById('rawData');
+        if (textarea) textarea.focus();
     }
 </script>
 
