@@ -502,49 +502,165 @@
         const rawInput = document.getElementById('rawData').value;
         if (!rawInput) return alert("Please paste the text first.");
 
-        // Robust Parsing: 
-        // - Split by newline
-        // - Filter out empty lines
-        // - Trim whitespace from the ends of the extracted line
-        const lines = rawInput.split('\n').filter(line => line.trim().length > 0);
-        
-        if (lines.length === 0) return alert("No valid text found.");
+        // Heuristic: if the pasted text contains Marathi/Hindi field names, use new-format parser
+        const newFormatKeywords = ['मतदाराची माहिती', 'नाव', 'मतदान कार्ड', 'मतदान केंद्र', 'प्रभाग', 'अ क्र', 'विधानसभा क्र'];
+        const containsNewFormatKeyword = newFormatKeywords.some(k => rawInput.includes(k));
 
-        // We assume the data line is the last non-empty line pasted
-        const dataLine = lines[lines.length - 1].trim(); 
-        const parts = dataLine.split('\t');
-
-        // Validation based on your provided format (approx 14 columns)
-        if (parts.length < 10) {
-            alert("Format mismatch! Detected " + parts.length + " columns. Please ensure you copied the full row.");
-            return;
-        }
-
-        // 2. Extract Data (Indices based on your description)
-        // Note: adjust indices if your source columns differ
-        const data = {
-            name: parts[2] || '',
-            gender: parts[3] || '',
-            age: parts[4] || '',
-            epic: parts[5] || '',
-            acDetails: ((parts[6] || '') + " / " + (parts[7] || '') + " / " + (parts[8] || '')).replace(/^\s*\/\s*/, ''),
-            boothNo: parts[10] || '',
-            wardNo: parts[9] || '',
-            sr: parts[11] || '',
-            boothAddr: parts[13] || ''
+        let data = {
+            name: '',
+            gender: '',
+            age: '',
+            epic: '',
+            acDetails: '',
+            boothNo: '',
+            wardNo: '',
+            sr: '',
+            boothAddr: ''
         };
 
-        currentVoterData = data; // Store for WhatsApp function
+        if (containsNewFormatKeyword) {
+            // Parse the multiline Marathi/Hindi block format
+            const rawLines = rawInput.split('\n');
+
+            // remove purely dashed separators and empty lines, trim and strip surrounding asterisks
+            const lines = rawLines
+                .map(l => l.trim())
+                .filter(l => l.length > 0 && !/^-{3,}$/.test(l))
+                .map(l => l.replace(/^\*+/, '').replace(/\*+$/, '').trim());
+
+            // iterate lines to extract fields
+            lines.forEach(line => {
+                // normalize multiple spaces and remove trailing punctuation
+                const cleanLine = line.replace(/\s+/g, ' ').trim();
+
+                // Name: "नाव : X" (sometimes wrapped in asterisks)
+                let m;
+                if ((m = cleanLine.match(/नाव\s*[:\-]\s*(.+)$/))) {
+                    data.name = m[1].trim();
+                    return;
+                }
+
+                // Ward No: "प्रभाग : 3"
+                if ((m = cleanLine.match(/प्रभाग\s*[:\-]\s*(.+)$/))) {
+                    data.wardNo = m[1].trim();
+                    return;
+                }
+
+                // Serial No: "अ क्र : 475" (allow variations like "अ क्र" or "अक्र")
+                if ((m = cleanLine.match(/अ\s*क्र\s*[:\-]\s*(.+)$/)) || (m = cleanLine.match(/अक्र\s*[:\-]\s*(.+)$/))) {
+                    data.sr = m[1].trim();
+                    return;
+                }
+
+                // EPIC / Voter ID: "मतदान कार्ड : RSC5528005"
+                if ((m = cleanLine.match(/मतदान\s*कार्ड\s*[:\-]\s*(.+)$/))) {
+                    data.epic = m[1].trim();
+                    return;
+                }
+
+                // Assembly details: "विधानसभा क्र : 188/61/1238"
+                if ((m = cleanLine.match(/विधानसभा\s*क्र\s*[:\-]\s*(.+)$/))) {
+                    data.acDetails = m[1].trim();
+                    return;
+                }
+
+                // Booth: "मतदान केंद्र : 54 - address..." or sometimes just "मतदान केंद्र : 54 -address"
+                if ((m = cleanLine.match(/मतदान\s*केंद्र\s*[:\-]\s*(.+)$/))) {
+                    const rest = m[1].trim();
+
+                    // Try to split at the first dash to separate boothNo and address
+                    const dashSplit = rest.split(/[-–—]/); // handle multiple dash types
+                    if (dashSplit.length >= 2) {
+                        const possibleBooth = dashSplit[0].trim();
+                        // if possibleBooth looks numeric, treat as booth number
+                        if (/^\d+$/.test(possibleBooth)) {
+                            data.boothNo = possibleBooth;
+                            data.boothAddr = dashSplit.slice(1).join('-').trim();
+                        } else {
+                            // If not purely numeric, fallback: maybe "54 - ..." was attached but cleaning removed digits
+                            // try to find numeric token inside the 'rest'
+                            const numMatch = rest.match(/(\d{1,4})/);
+                            if (numMatch) {
+                                data.boothNo = numMatch[1];
+                                // remove the first numeric token from rest to get address
+                                data.boothAddr = rest.replace(numMatch[0], '').replace(/^[-\s:]+/, '').trim();
+                            } else {
+                                // If no number found, keep entire rest as address
+                                data.boothAddr = rest;
+                            }
+                        }
+                    } else {
+                        // No dash present; try to extract leading number then rest
+                        const numMatch = rest.match(/^(\d{1,4})\s*(.*)$/);
+                        if (numMatch) {
+                            data.boothNo = numMatch[1];
+                            data.boothAddr = (numMatch[2] || '').trim();
+                        } else {
+                            // fallback: whole rest is address
+                            data.boothAddr = rest;
+                        }
+                    }
+                    return;
+                }
+
+                // Some lines may include only the dashed boundary; we already filtered those out.
+                // If any other useful pattern appears (e.g., lines that are just "54 - address") try to catch that:
+                if ((m = cleanLine.match(/^(\d{1,4})\s*[-–—]\s*(.+)$/))) {
+                    if (!data.boothNo) data.boothNo = m[1].trim();
+                    if (!data.boothAddr) data.boothAddr = m[2].trim();
+                    return;
+                }
+            });
+
+            // If assembly details exist but are in the form "188/61/1238" we keep as-is.
+            // Gender/Age are not present in this format — leave blank or display '---' in UI.
+        } else {
+            // FALLBACK: existing tab-separated format (unchanged behavior)
+            const lines = rawInput.split('\n').filter(line => line.trim().length > 0);
+            if (lines.length === 0) return alert("No valid text found.");
+            const dataLine = lines[lines.length - 1].trim();
+            const parts = dataLine.split('\t');
+
+            if (parts.length < 10) {
+                alert("Format mismatch! Detected " + parts.length + " columns. Please ensure you copied the full row.");
+                return;
+            }
+
+            data = {
+                name: parts[2] || '',
+                gender: parts[3] || '',
+                age: parts[4] || '',
+                epic: parts[5] || '',
+                acDetails: ((parts[6] || '') + " / " + (parts[7] || '') + " / " + (parts[8] || '')).replace(/^\s*\/\s*/, ''),
+                boothNo: parts[10] || '',
+                wardNo: parts[9] || '',
+                sr: parts[11] || '',
+                boothAddr: parts[13] || ''
+            };
+        }
+
+        // Store and update UI — ensure there are no undefined values
+        currentVoterData = {
+            name: data.name || '',
+            gender: data.gender || '',
+            age: data.age || '',
+            epic: data.epic || '',
+            acDetails: data.acDetails || '',
+            boothNo: data.boothNo || '',
+            wardNo: data.wardNo || '',
+            sr: data.sr || '',
+            boothAddr: data.boothAddr || ''
+        };
 
         // 3. Update DOM
-        document.getElementById('disp-name').innerText = data.name || '---';
-        document.getElementById('disp-epic').innerText = data.epic || '---';
-        document.getElementById('disp-gender-age').innerText = `${data.gender || '---'} / ${data.age || '---'}`;
-        document.getElementById('disp-ward-no').innerText = data.wardNo || '---';
-        document.getElementById('disp-booth-no').innerText = data.boothNo || '---';
-        document.getElementById('disp-ac-details').innerText = data.acDetails || '---';
-        document.getElementById('disp-sr').innerText = data.sr || '---';
-        document.getElementById('disp-booth-addr').innerText = data.boothAddr || '---';
+        document.getElementById('disp-name').innerText = currentVoterData.name || '---';
+        document.getElementById('disp-epic').innerText = currentVoterData.epic || '---';
+        document.getElementById('disp-gender-age').innerText = `${currentVoterData.gender || '---'} / ${currentVoterData.age || '---'}`;
+        document.getElementById('disp-ward-no').innerText = currentVoterData.wardNo || '---';
+        document.getElementById('disp-booth-no').innerText = currentVoterData.boothNo || '---';
+        document.getElementById('disp-ac-details').innerText = currentVoterData.acDetails || '---';
+        document.getElementById('disp-sr').innerText = currentVoterData.sr || '---';
+        document.getElementById('disp-booth-addr').innerText = currentVoterData.boothAddr || '---';
 
         // 4. Show Result Section
         const resultSec = document.getElementById('result-section');
